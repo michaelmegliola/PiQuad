@@ -39,7 +39,7 @@ class QuadQav250:
             
             self.thrust.spin_test()
             
-            base_throttle = [.30,.30,.30,.30]
+            base_throttle = [.0,.0,.0,.0]
             
             t0 = time.time()
             i = 0
