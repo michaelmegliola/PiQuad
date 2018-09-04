@@ -1,11 +1,8 @@
 import numpy as np
 import time
-from Adafruit_BNO055 import BNO055
-from nxp_imu import IMU
-import VL53L1X
-from ahrs import *
-from pid import *
-from esc import *
+from ahrs import AHRS
+from pid import PidController
+from esc import ESC
 
 class QuadQav250:
     
@@ -14,7 +11,6 @@ class QuadQav250:
     def __init__(self):
         try:
             self.thrust = ESC()
-            self.thrust.start()
             self.ahrs = AHRS()
             self.angular_pid_ahrs = PidController(QuadQav250.PID_ANGULAR, self.ahrs.get_angular_position, [0,0,0], PidController.t_angular)
             self.ahrs.start()
@@ -47,10 +43,13 @@ class QuadQav250:
             
             t0 = time.time()
             i = 0
-            while time.time() < t0 + 12.0:
+            while time.time() < t0 + 10.0:
                 pid_update = self.angular_pid_ahrs.update()
                 v_throttle = np.add(base_throttle, pid_update)
                 self.thrust.set_throttle(v_throttle)
+            print(self.ahrs)
+            print(self.ahrs.gyro)
+            print(self.ahrs.ahrs)
                 #print(self.angular_pid_ahrs)
                 #print(self.thrust)
                 #self.thrust.set_throttle(base_throttle)

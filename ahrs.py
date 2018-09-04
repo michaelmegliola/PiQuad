@@ -7,8 +7,6 @@ class AHRS_BNO055:
     def __init__(self):
         self.imu = BNO055.BNO055(serial_port='/dev/serial0', rst=18) # connected to UART @ 115200 baud, not I2C bus
         self.xyz = (None, None, None)
-        self.t0 = None
-        self.dt = None
         self.i = 0
         
     def get(self):
@@ -19,17 +17,9 @@ class AHRS_BNO055:
     def start(self):
         if not self.imu.begin():
             raise Exception("IMU failed to initialize")
-        self.xyz, self.t0 = self.get()
-        
-    def run(self):
-        while not self.stopping:
-            self.xyz, t1 = self.get()
-            self.dt = t1 - self.t0
-            self.t0 = t1
-        print("Stopping AHRS_BNO055")
         
     def __str__(self):
-        return 'AHRS_BNO055 i=' + str(self.i) + ' (roll,pitch,yaw), dt: ' + str(self.xyz) + ', ' + str(self.dt)
+        return 'AHRS_BNO055 i=' + str(self.i)
 
 
 class GYRO_FXAS21002:
@@ -42,8 +32,6 @@ class GYRO_FXAS21002:
         self.drift = [0.0,0.0,0.0]
         self.xyz = [0.0,0.0,0.0]
         self.xyz_dot = [0.0,0.0,0.0]
-        self.t0 = None
-        self.dt = None
         self.i = 0
 
     def get(self):
@@ -53,14 +41,6 @@ class GYRO_FXAS21002:
         
     def start(self):
         self.calibrate()
-        self.xyz, self.t0 = self.get()
-        
-    def run(self):
-        while not self.stopping:
-            self.xyz, t1 = self.get()
-            self.dt = t1 - self.t0
-            self.t0 = t1
-        print("Stopping GYRO_FXAS21002")
         
     def calibrate(self):
         print('Calibrating GYRO_FXAS21002...')
@@ -77,7 +57,7 @@ class GYRO_FXAS21002:
         print('Gyro calibration:', self.drift)
         
     def __str__(self):
-        return 'GYRO_FXAS21002 i=' + str(self.i) + ' (x_dot,y_dot,z_dot), dt: ' + str(self.xyz) + ', ' + str(self.dt)
+        return 'GYRO_FXAS21002 i=' + str(self.i)
 
 class AHRS():
     def __init__(self):
@@ -87,24 +67,36 @@ class AHRS():
         self.xyz = [0.0,0.0,0.0]
         self.xyz_dot = [0.0,0.0,0.0]
         self.t0 = None
+        self.t_ahrs = None
         self.dt = None
         
     def start(self):
         self.gyro.start()
         self.ahrs.start()
         
-    def get_angular_position(self):
-        self.xyz, self.t0 = self.ahrs.get()
-        loop_time = self.t0
+    def Hz(x):
+        if x == None or x == 0:
+            return 0
+        else:
+            return 1.0/x
         
-        if time.time() > loop_time + 0.10: # reset to absolute readings @ 10Hz
-            xyz, t1 = self.ahrs.get()
+    def get_angular_position(self):
+
+        if self.t0 == None:
+            self.xyz, t1 = self.ahrs.get()
+            self.t_ahrs = t1
+            self.dt = 0.0
+            self.xyz_dot[0] = 0.0
+            self.xyz_dot[1] = 0.0
+            self.xyz_dot[2] = 0.0   
+        elif time.time() > self.t_ahrs + 0.10: # reset to absolute readings @ 10Hz
+            xyz = self.xyz
+            self.xyz, t1 = self.ahrs.get()
+            self.t_ahrs = t1
             self.dt = t1 - self.t0
-            self.xyz_dot[0] = (xyz[0] - self.xyz[0]) / self.dt
-            self.xyz_dot[1] = (xyz[1] - self.xyz[1]) / self.dt
-            self.xyz_dot[2] = (xyz[2] - self.xyz[2]) / self.dt
-            self.xyz = xyz
-            loop_time = t1
+            self.xyz_dot[0] = (self.xyz[0] - xyz[0]) / self.dt
+            self.xyz_dot[1] = (self.xyz[1] - xyz[1]) / self.dt
+            self.xyz_dot[2] = (self.xyz[2] - xyz[2]) / self.dt
         else:
             self.xyz_dot, t1 = self.gyro.get()
             self.dt = t1 - self.t0
@@ -119,4 +111,4 @@ class AHRS():
         return self.xyz, self.xyz_dot, self.dt
     
     def __str__(self):   
-        return 'AHRS i=' + str(self.i) + ',' + str(self.ahrs.i) + ',' + str(self.gyro.i) + ' ' + str(self.xyz) + str(self.xyz_dot) + str(self.dt)
+        return 'AHRS i=' + str(self.i) + ',' + str(self.ahrs.i) + ',' + str(self.gyro.i) + ' ' + str(self.xyz) + str(self.xyz_dot) + 'Hz=' + str(AHRS.Hz(self.dt))

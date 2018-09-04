@@ -25,23 +25,19 @@ class ESC:
     ESC_PWM_MAX = 2000  # esc max = pulse width of 2,000us = 0.002s
     
     def __init__(self, ESC_limit=1.0):
+        self.pi = pigpio.pi()
         if ESC_limit > 1.0 or ESC_limit < 0.0:
             print("WARNING: ESC limit is out of bounds; disabling ESC", ESC_limit)
             self.ESC_limit = 0.0
         else:
             self.ESC_limit = max(min(ESC_limit, 1.0), 0.0)
         self.esc_pins = [ESC.PIN_FR,ESC.PIN_RR,ESC.PIN_RL,ESC.PIN_FL]
-        
-    def start(self):
-        self.pi = pigpio.pi()
-        self.esc_range = ESC.ESC_PWM_MAX - ESC.ESC_PWM_MIN
-        self.armed = self.arm()
         self.v_pwm = ([ESC.ESC_PWM_MIN,ESC.ESC_PWM_MIN,ESC.ESC_PWM_MIN,ESC.ESC_PWM_MIN])
+        self.esc_range = ESC.ESC_PWM_MAX - ESC.ESC_PWM_MIN
         
     # setting must be [FORE,STARBOARD,AFT,PORT], each value 0.0 to 100.0
     # will be distributed in X-configuration (front-left, rear-left...)
     def set_throttle(self, setting):
-        setting = setting if self.armed else [0,0,0,0]
         self.throttle = np.maximum(setting, 0.0)
         self.throttle = np.minimum(self.throttle, self.ESC_limit)
         
@@ -83,7 +79,6 @@ class ESC:
         for pin in self.esc_pins:
             self.pi.set_servo_pulsewidth(ESC.PIN_FR, 0)
         self.pi.stop()
-        self.armed = False
         print('ESCs are disarmed...')
         
     def spin_test(self):
@@ -100,5 +95,5 @@ class ESC:
     def __str__(self):
         esc_pct = np.subtract(self.v_pwm, ESC.ESC_PWM_MIN)
         esc_pct = np.divide(esc_pct, self.esc_range)
-        return 'FR,RR,RL,FL' + str(esc_pct) + str(self.v_pwm) + ', armed = ' + str(self.armed)
+        return 'FR,RR,RL,FL' + str(esc_pct) + str(self.v_pwm)
 

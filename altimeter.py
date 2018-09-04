@@ -19,27 +19,11 @@ class TOF_VL53L1X:  # see https://github.com/pimoroni/vl53l1x-python
         self.i = 0
         
     def calibrate(self):
-        print('Calibrating TOF sensor (altimeter)')
-        i = 0
-        while i < 100:
+        print('Warming up TOF sensor (altimeter)')
+        for n in range(100):
             d = self.tof.get_distance()
-            i += 1
-            if d > 50.0:
-                print('Cannot calibrate TOF sensor (altimeter); distance = ', d)
-                i = 0
-            # need visual feedback here
-       
-    # OLD CODE    
-    def run(self):
-        d0 = self.tof.get_distance()
-        t0 = time.time()
-        while not self.stopping:
-            d1 = self.tof.get_distance()
-            t1 = time.time()
-            self.distance = d1
-            self.dt = t1 - t0
-            self.velocity = (d1-d0)/(t1-t0)
-            self.i += 1
-            d0 = d1
-            t0 = t1
- 
+        if self.tof.get_distance() == 0:
+            raise ValueError('Alitude sensor is reporting zero')
+     
+    def get_altitude(self):
+        return self.tof.get_distance() / 1000.0 # meters
