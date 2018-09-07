@@ -111,4 +111,4 @@ class AHRS():
         return self.xyz, self.xyz_dot, self.dt
     
     def __str__(self):   
-        return 'AHRS i=' + str(self.i) + ',' + str(self.ahrs.i) + ',' + str(self.gyro.i) + ' ' + str(self.xyz) + str(self.xyz_dot) + 'Hz=' + str(AHRS.Hz(self.dt))
+        return 'AHRS i=' + str(self.i) + ',' + str(self.ahrs.i) + ',' + str(self.gyro.i) + ' ' + str(self.xyz) + str(self.xyz_dot) + ' Hz=' + str(AHRS.Hz(self.dt))

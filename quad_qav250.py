@@ -3,13 +3,15 @@ import time
 from ahrs import AHRS
 from pid import PidController
 from esc import ESC
+from altimeter import TOF_VL53L1X
 
 class QuadQav250:
     
-    PID_ANGULAR = [[0.06,0.0,0.0],[0.06,0,0],[0,0,0]]
+    PID_ANGULAR = [[0.006,0.0,0.0],[0.006,0,0],[0,0,0]]
     
     def __init__(self):
         try:
+            self.altimeter = TOF_VL53L1X()
             self.thrust = ESC()
             self.ahrs = AHRS()
             self.angular_pid_ahrs = PidController(QuadQav250.PID_ANGULAR, self.ahrs.get_angular_position, [0,0,0], PidController.t_angular)
@@ -39,21 +41,22 @@ class QuadQav250:
             
             self.thrust.spin_test()
             
-            base_throttle = [.0,.0,.0,.0]
+            base_throttle = [.20,.20,.20,.20]
             
             t0 = time.time()
-            i = 0
-            while time.time() < t0 + 10.0:
+            flying = True
+            while flying:
+                if time.time() > t0 + 0.20:
+                        base_throttle = np.add(base_throttle, 0.001)
                 pid_update = self.angular_pid_ahrs.update()
                 v_throttle = np.add(base_throttle, pid_update)
                 self.thrust.set_throttle(v_throttle)
-            print(self.ahrs)
-            print(self.ahrs.gyro)
-            print(self.ahrs.ahrs)
-                #print(self.angular_pid_ahrs)
-                #print(self.thrust)
-                #self.thrust.set_throttle(base_throttle)
-            
+                xyz, xyz_dot, dt = self.altimeter.get_altitude()
+                if xyz[2] > 0.200:
+                        flying = False
+                print(v_throttle,self.thrust.v_pwm,self.ahrs.xyz)
+            self.thrust.set_throttle([.2,.2,.2,.2])
+            time.sleep(0.5)
             self.thrust.set_throttle([0,0,0,0])
             
             
